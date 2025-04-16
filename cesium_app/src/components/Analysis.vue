@@ -64,7 +64,7 @@
         </div>
         
         <!-- 路线信息展示 -->
-        <div class="route-info" v-if="routeInfo.distance">
+        <div class="route-info" v-if="routeInfo.distance !== null && routeInfo.distance !== undefined">
           <p><strong>总距离:</strong> {{ (routeInfo.distance / 1000).toFixed(2) }} 公里</p>
           <p><strong>预计时间:</strong> {{ formatDuration(routeInfo.duration) }}</p>
           <p><strong>收费:</strong> {{ routeInfo.tolls ? routeInfo.tolls + '元' : '无' }}</p>
@@ -171,6 +171,9 @@ export default defineComponent({
       if (pickingMode.value === pointType) {
         pickingMode.value = '';
       } else {
+        // 清除现有路线
+        clearRoute();
+        
         pickingMode.value = pointType;
         statusMessage.value = `请在地图上点击选择${pointType === 'start' ? '起点' : '终点'}位置`;
       }
@@ -178,6 +181,9 @@ export default defineComponent({
 
     // 使用当前位置
     const useCurrentLocation = (pointType) => {
+      // 清除现有路线
+      clearRoute();
+      
       const { longitude, latitude } = props.currentLocation;
       
       if (pointType === 'start') {
@@ -382,8 +388,11 @@ export default defineComponent({
     const drawRouteLine = (positions) => {
       if (!props.viewer) return;
       
-      // 首先清除已有路线
-      clearRoute();
+      // 首先清除已有路线但保留标记点
+      if (routeEntity && props.viewer.entities.contains(routeEntity)) {
+        props.viewer.entities.remove(routeEntity);
+        routeEntity = null;
+      }
       
       // 确保起止点标记存在
       addMarker(startPoint.value, 'start');
@@ -415,7 +424,7 @@ export default defineComponent({
       });
       
       // 缩放到路线范围
-      props.viewer.flyTo(props.viewer.entities, {
+      props.viewer.flyTo(routeEntity, {
         duration: 2
       });
     };
@@ -446,6 +455,9 @@ export default defineComponent({
       };
       
       statusMessage.value = '';
+
+      // 添加调试输出
+      console.log('路线已清除');
     };
     
     // 格式化持续时间（秒转为时分秒格式）
@@ -512,6 +524,51 @@ export default defineComponent({
     watch(() => props.viewer, (newViewer) => {
       if (newViewer) {
         initPickHandler();
+      }
+    });
+
+    // 添加路线类型变化监听器
+    watch(routeType, () => {
+      // 在切换路线类型时清除已有路线
+      clearRoute();
+    });
+
+    // 添加策略变化监听器
+    watch(strategy, () => {
+      // 在切换驾车策略时清除已有路线
+      if (routeEntity) {
+        clearRoute();
+      }
+    });
+
+    // 监听起点和终点的变化
+    watch([() => startPoint.value.lng, () => startPoint.value.lat], () => {
+      // 在起点变化后清除已有路线，但保留标记点
+      if (routeEntity && props.viewer && props.viewer.entities.contains(routeEntity)) {
+        props.viewer.entities.remove(routeEntity);
+        routeEntity = null;
+        
+        // 重置路线信息
+        routeInfo.value = {
+          distance: null,
+          duration: null,
+          tolls: null
+        };
+      }
+    });
+
+    watch([() => endPoint.value.lng, () => endPoint.value.lat], () => {
+      // 在终点变化后清除已有路线，但保留标记点
+      if (routeEntity && props.viewer && props.viewer.entities.contains(routeEntity)) {
+        props.viewer.entities.remove(routeEntity);
+        routeEntity = null;
+        
+        // 重置路线信息
+        routeInfo.value = {
+          distance: null,
+          duration: null,
+          tolls: null
+        };
       }
     });
 
