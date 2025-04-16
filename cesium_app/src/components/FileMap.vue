@@ -25,6 +25,7 @@
             <input type="color" v-model="gltfColor" @change="updateGltfColor" />
           </div>
           <div class="control-buttons">
+            <button @click="loadSampleGltf">示例模型</button>
             <button @click="clearGltf" class="btn-danger">清除</button>
           </div>
         </div>
@@ -36,22 +37,14 @@
       <div class="file-map-section">
         <div class="file-section-title">3D Tiles</div>
         <div class="control-row">
-          <label>资产选择: </label>
-          <select v-model="selectedTilesetAsset" class="select-control">
-            <option v-for="asset in tilesetAssets" :key="asset.id" :value="asset">
-              {{ asset.name }}
-            </option>
-          </select>
-        </div>
-        <div class="control-row">
           <div class="color-picker">
             <label>颜色: </label>
             <input type="color" v-model="tilesColor" @change="update3DTilesColor" />
           </div>
-        </div>
-        <div class="control-buttons">
-          <button @click="load3DTiles" class="btn-primary">加载资产</button>
-          <button @click="clear3DTiles" class="btn-danger">清除</button>
+          <div class="control-buttons">
+            <button @click="load3DTiles" class="btn-primary">加载资产</button>
+            <button @click="clear3DTiles" class="btn-danger">清除</button>
+          </div>
         </div>
       </div>
     </div>
@@ -66,18 +59,10 @@
           <span class="file-name">{{ geoJsonFileName || 'No file selected' }}</span>
         </div>
         
-        <!-- 加载状态显示 -->
-        <div v-if="geoJsonDataSource" class="geojson-status">
-          <div class="status-badge success">已加载</div>
-          <button @click="clearGeoJson" class="btn-icon" title="移除文件">
-            <span class="icon">×</span>
-          </button>
-        </div>
-        
-        <div v-if="geoJsonDataSource" class="control-section">
+        <div class="control-section">
           <div class="control-row">
             <label>色带选择: </label>
-            <select v-model="selectedColorBand" class="select-control" @change="updateGeoJsonColors">
+            <select v-model="selectedColorBand" class="select-control">
               <option v-for="band in colorBands" :key="band.name" :value="band">
                 {{ band.name }}
               </option>
@@ -86,22 +71,19 @@
           
           <!-- 渐变色带预览 -->
           <div class="gradient-preview" :style="{ 
-            background: getGradientStyle()
+            background: `linear-gradient(to right, 
+              ${selectedColorBand.colors[0].toCssColorString()}, 
+              ${selectedColorBand.colors[1].toCssColorString()})` 
           }"></div>
 
           <div class="control-row" v-if="geoJsonFields.length > 0">
             <label>高度字段: </label>
-            <select v-model="selectedGeoJsonField" class="select-control" @change="calculateFieldStats">
+            <select v-model="selectedGeoJsonField" class="select-control">
               <option v-for="field in geoJsonFields" :key="field" :value="field">{{ field }}</option>
             </select>
           </div>
-          
-          <!-- 字段统计信息显示 -->
-          <div class="field-stats" v-if="selectedGeoJsonField && fieldStats.min !== undefined">
-            <p class="stat-info">字段范围: {{ fieldStats.min.toFixed(2) }} - {{ fieldStats.max.toFixed(2) }}</p>
-          </div>
 
-          <div class="control-row">
+          <div class="control-row" v-if="geoJsonDataSource">
             <div class="height-factor">
               <label>高度系数: </label>
               <input type="range" min="0.1" max="10" step="0.1" v-model="heightFactor" class="range-slider"/>
@@ -110,8 +92,8 @@
           </div>
           
           <div class="control-buttons">
-            <button @click="applyGeoJsonRendering" class="btn-primary">应用高度渲染</button>
-            <button @click="resetGeoJsonHeight" class="btn-secondary">重置高度</button>
+            <button @click="applyGeoJsonRendering" class="btn-primary" v-if="geoJsonDataSource">应用渲染</button>
+            <button @click="clearGeoJson" class="btn-danger" v-if="geoJsonDataSource">清除数据</button>
           </div>
         </div>
       </div>
@@ -148,22 +130,6 @@ export default defineComponent({
     let geoJsonDataSource = null;
     const gltfFileName = ref('');
     const geoJsonFileName = ref('');
-    
-    // 字段统计信息
-    const fieldStats = ref({ min: undefined, max: undefined });
-
-    // 3D Tiles 资产列表
-    const tilesetAssets = ref([
-      { id: 75343, name: "Cesium OSM Buildings" },
-      { id: 96188, name: "Natural Earth" },
-      { id: 1461964, name: "Melbourne Photogrammetry" },
-      { id: 2275207, name: "New York" },
-      { id: 69380, name: "San Francisco" },
-      { id: 3872, name: "Grand Canyon" },
-      { id: 40866, name: "Seattle Buildings" },
-      { id: 16421, name: "Historical St. Peter's Basilica" },
-    ]);
-    const selectedTilesetAsset = ref(tilesetAssets.value[0]);
 
     // 色带设置 - 更丰富的色带选择
     const colorBands = ref([
@@ -175,24 +141,8 @@ export default defineComponent({
     ]);
     const selectedColorBand = ref(colorBands.value[0]);
 
-    // 生成渐变样式
-    const getGradientStyle = () => {
-      const colors = selectedColorBand.value.colors;
-      if (colors.length === 2) {
-        return `linear-gradient(to right, ${colors[0].toCssColorString()}, ${colors[1].toCssColorString()})`;
-      }
-      
-      // 处理多色带
-      const stops = colors.map((color, index) => {
-        const percent = (index / (colors.length - 1)) * 100;
-        return `${color.toCssColorString()} ${percent}%`;
-      }).join(', ');
-      
-      return `linear-gradient(to right, ${stops})`;
-    };
-
     // 设置 Cesium ion 访问令牌
-    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJmMzQ5NjA3Ny1iYzdkLTRhYWQtODhjOS0xMDM5ZDU2MDc5NWYiLCJpZCI6MjkzOTI4LCJpYXQiOjE3NDQ2Mjc0MzJ9.5B7kUdXIlR3RrzCEs58kNEFzEgihL6ezYuCjsU6WvXw';
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJmMzQ5NjA3Ny1iYzdkLTRhYWQtODhjOS0xMDM5ZDU2MDc5NWYiLCJpZCI6MjkzOTI4LCJpYXQiOjE3NDQ2Mjc0MzJ9.5B7kUdXIlR3RrzCEs58kNEFzEgihL6ezYuCjsU6WvXw'; // 替换为你的 Cesium ion 令牌
 
     // 验证位置
     const validateLocation = () => {
@@ -313,6 +263,85 @@ export default defineComponent({
       }
     };
 
+    // 加载示例 glTF
+    const loadSampleGltf = async () => {
+      if (!props.viewer) {
+        console.error('Viewer is not initialized');
+        return;
+      }
+
+      if (!validateLocation()) {
+        console.error('无法加载示例 glTF：位置无效');
+        return;
+      }
+
+      try {
+        cleanEntities();
+        clearGltf();
+        gltfFileName.value = "Cesium_Air.glb";
+
+        const url = 'https://cesium.com/public/Sandcastle/sampleData/models/Cesium_Air/Cesium_Air.glb';
+        const position = Cesium.Cartesian3.fromDegrees(
+          props.currentLocation.longitude,
+          props.currentLocation.latitude,
+          100
+        );
+        const heading = Cesium.Math.toRadians(0);
+        const pitch = Cesium.Math.toRadians(0);
+        const roll = 0;
+        const hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
+        const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
+
+        gltfEntity = await props.viewer.entities.add({
+          id: `gltf_sample_${Cesium.createGuid()}`,
+          name: 'Cesium_Air',
+          position: position,
+          orientation: orientation,
+          model: {
+            uri: url,
+            scale: 100,
+            minimumPixelSize: 64,
+            maximumScale: 20000,
+            color: gltfColor.value ? Cesium.Color.fromCssColorString(gltfColor.value) : Cesium.Color.WHITE,
+            incrementallyLoadTextures: true,
+            runAnimations: true,
+            clampAnimations: true,
+            shadows: Cesium.ShadowMode.ENABLED,
+            heightReference: Cesium.HeightReference.NONE,
+          },
+        });
+
+        console.log('示例 glTF 加载成功:', url, '位置:', position);
+
+        try {
+          // 使用flyTo而不是zoomTo和trackedEntity
+          props.viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(
+              props.currentLocation.longitude,
+              props.currentLocation.latitude,
+              1000 // 适合观察模型的高度
+            ),
+            orientation: {
+              heading: Cesium.Math.toRadians(0),
+              pitch: Cesium.Math.toRadians(-45),
+              roll: 0
+            },
+            duration: 2
+          });
+        } catch (flyError) {
+          console.warn('飞行到示例glTF位置失败:', flyError.message);
+        }
+
+        emit('update-location', {
+          longitude: props.currentLocation.longitude,
+          latitude: props.currentLocation.latitude,
+          height: 1000,
+        });
+      } catch (error) {
+        console.error('示例 glTF 加载失败:', error.message);
+      }
+    };
+
     // 更新 glTF 颜色
     const updateGltfColor = () => {
       if (gltfEntity && gltfEntity.model) {
@@ -331,7 +360,7 @@ export default defineComponent({
       }
     };
 
-    // 加载 3D Tiles（从资产列表）
+    // 加载 3D Tiles（Cesium ion 资产 75343）
     const load3DTiles = async () => {
       if (!props.viewer) {
         console.error('Viewer is not initialized');
@@ -343,12 +372,9 @@ export default defineComponent({
         clear3DTiles();
 
         // 使用 Cesium Ion 资产加载 3D Tiles
-        const assetId = selectedTilesetAsset.value.id;
-        console.log(`加载 3D Tiles 资产: ${selectedTilesetAsset.value.name} (ID: ${assetId})`);
-        
-        tileset = await Cesium.Cesium3DTileset.fromIonAssetId(assetId);
+        tileset = await Cesium.Cesium3DTileset.fromIonAssetId(75343);
         props.viewer.scene.primitives.add(tileset);
-        console.log(`3D Tiles 资产加载成功: ${selectedTilesetAsset.value.name}`);
+        console.log('3D Tiles 资产加载成功: 75343');
 
         try {
           // 获取3D Tiles的包围球，计算合适的视点
@@ -382,10 +408,6 @@ export default defineComponent({
               ) {
                 tileset.style = new Cesium.Cesium3DTileStyle(extras.ion.defaultStyle);
               }
-              
-              // 应用颜色
-              update3DTilesColor();
-              
             } catch (error) {
               console.warn('3D Tiles 视点计算失败:', error.message);
               // 回退到默认视点
@@ -443,130 +465,6 @@ export default defineComponent({
       }
     };
 
-    // 计算字段统计
-    const calculateFieldStats = () => {
-      if (!geoJsonDataSource || !selectedGeoJsonField.value) {
-        fieldStats.value = { min: undefined, max: undefined };
-        return;
-      }
-      
-      let min = Infinity;
-      let max = -Infinity;
-      
-      geoJsonDataSource.entities.values.forEach(entity => {
-        if (entity.properties && entity.properties[selectedGeoJsonField.value]) {
-          const value = parseFloat(entity.properties[selectedGeoJsonField.value].getValue());
-          if (!isNaN(value)) {
-            min = Math.min(min, value);
-            max = Math.max(max, value);
-          }
-        }
-      });
-      
-      if (min !== Infinity && max !== -Infinity) {
-        fieldStats.value = { min: min, max: max };
-        console.log(`字段 ${selectedGeoJsonField.value} 的值范围: ${min} - ${max}`);
-      } else {
-        fieldStats.value = { min: undefined, max: undefined };
-      }
-    };
-    
-    // 更新 GeoJSON 颜色但不改变高度
-    const updateGeoJsonColors = () => {
-      if (!geoJsonDataSource) return;
-      
-      const colors = selectedColorBand.value.colors;
-      const colorCount = colors.length;
-      const entities = geoJsonDataSource.entities.values;
-      const entityCount = entities.length;
-      
-      // 如果选择了字段，找出最大最小值用于颜色映射
-      let minValue = Infinity;
-      let maxValue = -Infinity;
-      
-      if (selectedGeoJsonField.value) {
-        entities.forEach(entity => {
-          if (entity.properties && entity.properties[selectedGeoJsonField.value]) {
-            const value = parseFloat(entity.properties[selectedGeoJsonField.value].getValue());
-            if (!isNaN(value)) {
-              minValue = Math.min(minValue, value);
-              maxValue = Math.max(maxValue, value);
-            }
-          }
-        });
-      }
-      
-      // 值范围
-      const valueRange = maxValue - minValue;
-      
-      entities.forEach((entity, index) => {
-        if (entity.polygon) {
-          // 根据索引或字段值计算颜色位置
-          let colorPosition;
-          
-          if (selectedGeoJsonField.value && entity.properties && entity.properties[selectedGeoJsonField.value] && valueRange > 0) {
-            const value = parseFloat(entity.properties[selectedGeoJsonField.value].getValue());
-            if (!isNaN(value)) {
-              // 根据字段值生成颜色
-              colorPosition = (value - minValue) / valueRange;
-            } else {
-              // 回退到索引
-              colorPosition = index / (entityCount - 1 || 1);
-            }
-          } else {
-            // 根据索引生成颜色
-            colorPosition = index / (entityCount - 1 || 1);
-          }
-          
-          // 计算颜色
-          let finalColor;
-          if (colorCount > 2) {
-            // 多色带 - 找到对应的区间和颜色
-            const segment = colorPosition * (colorCount - 1);
-            const segmentIndex = Math.floor(segment);
-            const segmentPosition = segment - segmentIndex;
-            
-            if (segmentIndex >= colorCount - 1) {
-              finalColor = colors[colorCount - 1];
-            } else {
-              finalColor = Cesium.Color.lerp(
-                colors[segmentIndex],
-                colors[segmentIndex + 1],
-                segmentPosition,
-                new Cesium.Color()
-              );
-            }
-          } else {
-            // 双色带
-            finalColor = Cesium.Color.lerp(
-              colors[0],
-              colors[1],
-              colorPosition,
-              new Cesium.Color()
-            );
-          }
-          
-          // 仅更新颜色，保留现有高度
-          entity.polygon.material = finalColor;
-        }
-      });
-      
-      console.log('已更新 GeoJSON 颜色，使用色带:', selectedColorBand.value.name);
-    };
-
-    // 重置 GeoJSON 高度
-    const resetGeoJsonHeight = () => {
-      if (!geoJsonDataSource) return;
-      
-      geoJsonDataSource.entities.values.forEach(entity => {
-        if (entity.polygon) {
-          entity.polygon.extrudedHeight = undefined;
-        }
-      });
-      
-      console.log('已重置 GeoJSON 高度');
-    };
-
     // 修改 GeoJSON 加载逻辑，先显示数据，选择字段后再渲染高度 - 不自动应用高度
     const loadGeoJson = async (event) => {
       if (!props.viewer) {
@@ -608,12 +506,6 @@ export default defineComponent({
           // 更新字段选择框
           geoJsonFields.value = availableFields;
           selectedGeoJsonField.value = availableFields[0] || null;
-          
-          // 计算字段统计
-          calculateFieldStats();
-          
-          // 加载后立即应用颜色（但不应用高度）
-          updateGeoJsonColors();
 
           try {
             // 飞行到 GeoJSON 数据范围
@@ -628,30 +520,95 @@ export default defineComponent({
       }
     };
 
-    // 专门的渲染函数，响应用户点击"应用高度渲染"按钮
+    // 专门的渲染函数，响应用户点击"应用渲染"按钮
     const applyGeoJsonRendering = () => {
       if (!geoJsonDataSource) {
         console.warn('GeoJSON 数据未加载');
         return;
       }
 
-      // 应用当前选择的色带
-      updateGeoJsonColors();
-
-      // 如果没有选择字段，则不应用高度
-      if (!selectedGeoJsonField.value) {
-        console.warn('未选择字段，无法渲染高度');
-        return;
+      const colors = selectedColorBand.value.colors;
+      const colorCount = colors.length;
+      const entities = geoJsonDataSource.entities.values;
+      const entityCount = entities.length;
+      
+      // 如果选择了字段，找出最大最小值用于归一化
+      let minValue = Infinity;
+      let maxValue = -Infinity;
+      
+      if (selectedGeoJsonField.value) {
+        entities.forEach(entity => {
+          if (entity.properties && entity.properties[selectedGeoJsonField.value]) {
+            const value = parseFloat(entity.properties[selectedGeoJsonField.value].getValue());
+            if (!isNaN(value)) {
+              minValue = Math.min(minValue, value);
+              maxValue = Math.max(maxValue, value);
+            }
+          }
+        });
       }
       
-      const entities = geoJsonDataSource.entities.values;
+      // 值范围
+      const valueRange = maxValue - minValue;
       
-      // 应用高度
-      entities.forEach((entity) => {
-        if (entity.polygon && entity.properties && entity.properties[selectedGeoJsonField.value]) {
-          const value = parseFloat(entity.properties[selectedGeoJsonField.value].getValue());
-          if (!isNaN(value)) {
-            entity.polygon.extrudedHeight = value * parseFloat(heightFactor.value);
+      // 应用渲染
+      entities.forEach((entity, index) => {
+        if (entity.polygon) {
+          // 根据索引或字段值计算颜色位置
+          let colorPosition;
+          
+          if (selectedGeoJsonField.value && entity.properties && entity.properties[selectedGeoJsonField.value]) {
+            const value = parseFloat(entity.properties[selectedGeoJsonField.value].getValue());
+            if (!isNaN(value) && valueRange > 0) {
+              // 根据字段值生成颜色
+              colorPosition = (value - minValue) / valueRange;
+            } else {
+              // 回退到索引
+              colorPosition = index / (entityCount - 1 || 1);
+            }
+          } else {
+            // 根据索引生成颜色
+            colorPosition = index / (entityCount - 1 || 1);
+          }
+          
+          // 计算颜色
+          let finalColor;
+          if (colorCount > 2) {
+            // 多色带 - 找到对应的区间和颜色
+            const segment = colorPosition * (colorCount - 1);
+            const segmentIndex = Math.floor(segment);
+            const segmentPosition = segment - segmentIndex;
+            
+            if (segmentIndex >= colorCount - 1) {
+              finalColor = colors[colorCount - 1];
+            } else {
+              finalColor = Cesium.Color.lerp(
+                colors[segmentIndex],
+                colors[segmentIndex + 1],
+                segmentPosition,
+                new Cesium.Color()
+              );
+            }
+          } else {
+            // 双色带
+            finalColor = Cesium.Color.lerp(
+              colors[0],
+              colors[1],
+              colorPosition,
+              new Cesium.Color()
+            );
+          }
+          
+          entity.polygon.material = finalColor;
+          
+          // 应用高度 - 使用字段值和高度系数
+          if (selectedGeoJsonField.value && entity.properties && entity.properties[selectedGeoJsonField.value]) {
+            const value = parseFloat(entity.properties[selectedGeoJsonField.value].getValue());
+            if (!isNaN(value)) {
+              entity.polygon.extrudedHeight = value * parseFloat(heightFactor.value);
+            } else {
+              entity.polygon.extrudedHeight = 0;
+            }
           } else {
             entity.polygon.extrudedHeight = 0;
           }
@@ -660,8 +617,8 @@ export default defineComponent({
           entity.polygon.outlineColor = Cesium.Color.BLACK;
         }
 
-        // 添加注记 - 如果存在名称字段
-        if (entity.properties && entity.properties.name && !entity.label) {
+        // 添加注记
+        if (entity.properties && entity.properties.name) {
           entity.label = new Cesium.LabelGraphics({
             text: entity.properties.name.getValue(),
             font: '14pt sans-serif',
@@ -675,7 +632,7 @@ export default defineComponent({
         }
       });
       
-      console.log('已应用 GeoJSON 高度渲染，使用字段:', selectedGeoJsonField.value, '高度系数:', heightFactor.value);
+      console.log('已应用 GeoJSON 渲染，使用字段:', selectedGeoJsonField.value, '高度系数:', heightFactor.value);
     };
 
     // 清除 GeoJSON 数据
@@ -686,15 +643,9 @@ export default defineComponent({
         geoJsonFields.value = [];
         selectedGeoJsonField.value = null;
         geoJsonFileName.value = '';
-        fieldStats.value = { min: undefined, max: undefined };
         console.log('GeoJSON 已清除');
       }
     };
-
-    // 监听字段变化，更新统计信息
-    watch(selectedGeoJsonField, () => {
-      calculateFieldStats();
-    });
 
     // 激活的标签页
     const activeTab = ref('gltf');
@@ -739,9 +690,8 @@ export default defineComponent({
       geoJsonColor,
       colorBands,
       selectedColorBand,
-      tilesetAssets,
-      selectedTilesetAsset,
       loadGltf,
+      loadSampleGltf,
       updateGltfColor,
       clearGltf,
       load3DTiles,
@@ -758,12 +708,7 @@ export default defineComponent({
       selectedGeoJsonField,
       heightFactor,
       gltfFileName,
-      geoJsonFileName,
-      fieldStats,
-      calculateFieldStats,
-      updateGeoJsonColors,
-      resetGeoJsonHeight,
-      getGradientStyle
+      geoJsonFileName
     };
   },
 });
@@ -993,16 +938,6 @@ button:hover {
   background-color: #3367d6;
 }
 
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-  border-color: #5a6268;
-}
-
-.btn-secondary:hover {
-  background-color: #5a6268;
-}
-
 .btn-danger {
   background-color: #f8f9fa;
   color: #d73a49;
@@ -1011,58 +946,6 @@ button:hover {
 
 .btn-danger:hover {
   background-color: #f8d7da;
-}
-
-.geojson-status {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.status-badge {
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-}
-
-.status-badge.success {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.field-stats {
-  background-color: #f8f9fa;
-  border: 1px dashed #ddd;
-  border-radius: 4px;
-  padding: 6px;
-  margin: 5px 0;
-}
-
-.stat-info {
-  font-size: 12px;
-  margin: 0;
-  color: #666;
-}
-
-.btn-icon {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-}
-
-.btn-icon:hover {
-  background-color: #f0f0f0;
-}
-
-.icon {
-  font-size: 16px;
-  font-weight: bold;
 }
 
 .drag-handle {
