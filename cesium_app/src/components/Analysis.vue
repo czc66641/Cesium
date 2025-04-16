@@ -210,6 +210,8 @@ export default defineComponent({
       
       const color = type === 'start' ? Cesium.Color.GREEN : Cesium.Color.RED;
       const markerEntity = props.viewer.entities.add({
+        id: `route_marker_${type}_${Date.now()}`, // 添加唯一ID
+        name: type, // 添加名称用于识别
         position: Cesium.Cartesian3.fromDegrees(
           parseFloat(point.lng), 
           parseFloat(point.lat), 
@@ -408,6 +410,8 @@ export default defineComponent({
       
       // 添加路线实体
       routeEntity = props.viewer.entities.add({
+        id: `route_path_${Date.now()}`, // 添加唯一ID
+        name: 'route', // 添加名称用于识别
         polyline: {
           positions: cesiumPositions,
           width: 6,
@@ -432,22 +436,60 @@ export default defineComponent({
     // 清除路线
     const clearRoute = () => {
       if (props.viewer) {
-        if (routeEntity && props.viewer.entities.contains(routeEntity)) {
-          props.viewer.entities.remove(routeEntity);
-          routeEntity = null;
-        }
-        
-        if (startMarker && props.viewer.entities.contains(startMarker)) {
-          props.viewer.entities.remove(startMarker);
-          startMarker = null;
-        }
-        
-        if (endMarker && props.viewer.entities.contains(endMarker)) {
-          props.viewer.entities.remove(endMarker);
-          endMarker = null;
+        try {
+          // 直接从 viewer 中删除实体（通过 ID 方式查找）
+          if (routeEntity) {
+            const routeId = routeEntity.id;
+            if (props.viewer.entities.getById(routeId)) {
+              props.viewer.entities.removeById(routeId);
+            }
+            routeEntity = null;
+          }
+          
+          // 删除起点标记
+          if (startMarker) {
+            const startId = startMarker.id;
+            if (props.viewer.entities.getById(startId)) {
+              props.viewer.entities.removeById(startId);
+            }
+            startMarker = null;
+          }
+          
+          // 删除终点标记
+          if (endMarker) {
+            const endId = endMarker.id;
+            if (props.viewer.entities.getById(endId)) {
+              props.viewer.entities.removeById(endId);
+            }
+            endMarker = null;
+          }
+          
+          // 删除任何可能的路线相关实体（防御性清理）
+          const entitiesToRemove = [];
+          props.viewer.entities.values.forEach(entity => {
+            if ((entity.polyline && entity._name === 'route') || 
+                (entity.point && (entity._name === 'start' || entity._name === 'end'))) {
+              entitiesToRemove.push(entity);
+            }
+          });
+          
+          entitiesToRemove.forEach(entity => {
+            try {
+              props.viewer.entities.remove(entity);
+            } catch (error) {
+              console.error('移除实体失败:', error);
+            }
+          });
+          
+          // 强制刷新 Cesium 视图
+          props.viewer.scene.requestRender();
+          
+        } catch (error) {
+          console.error('清除路线时发生错误:', error);
         }
       }
       
+      // 重置路线信息
       routeInfo.value = {
         distance: null,
         duration: null,
@@ -455,8 +497,7 @@ export default defineComponent({
       };
       
       statusMessage.value = '';
-
-      // 添加调试输出
+      
       console.log('路线已清除');
     };
     
