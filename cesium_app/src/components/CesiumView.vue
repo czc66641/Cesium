@@ -38,6 +38,14 @@
     @update-location="updateLocation"
   />
 
+  <!-- 引入空间分析组件 -->
+  <Analysis
+    v-if="viewer"
+    :viewer="viewer"
+    :current-location="currentLocation"
+    @update-location="updateLocation"
+  />
+
   <!-- 引入鼠标事件组件 -->
   <MouseEvent
     v-if="viewer"
@@ -54,6 +62,7 @@ import 'cesium/Build/Cesium/Widgets/widgets.css';
 import ViewTranference from './ViewTranference.vue';
 import FileMap from './FileMap.vue';
 import MouseEvent from './MouseEvent.vue';
+import Analysis from './Analysis.vue';
 
 export default defineComponent({
   name: 'CesiumView',
@@ -61,6 +70,7 @@ export default defineComponent({
     ViewTranference,
     FileMap,
     MouseEvent,
+    Analysis,
   },
   setup() {
     const viewer = ref(null);
