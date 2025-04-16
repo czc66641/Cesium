@@ -171,8 +171,8 @@ export default defineComponent({
       if (pickingMode.value === pointType) {
         pickingMode.value = '';
       } else {
-        // 清除现有路线
-        clearRoute();
+        // 只清除路线路径，不清除标记点
+        clearRoutePath();
         
         pickingMode.value = pointType;
         statusMessage.value = `请在地图上点击选择${pointType === 'start' ? '起点' : '终点'}位置`;
@@ -181,8 +181,8 @@ export default defineComponent({
 
     // 使用当前位置
     const useCurrentLocation = (pointType) => {
-      // 清除现有路线
-      clearRoute();
+      // 只清除路线路径，不清除标记点
+      clearRoutePath();
       
       const { longitude, latitude } = props.currentLocation;
       
@@ -197,11 +197,11 @@ export default defineComponent({
       }
     };
 
-    // 添加标记点
+    // 添加标记点 - 只删除相同类型的标记
     const addMarker = (point, type) => {
       if (!props.viewer) return;
       
-      // 移除现有标记
+      // 移除相同类型的现有标记（只删除起点或只删除终点）
       if (type === 'start' && startMarker && props.viewer.entities.contains(startMarker)) {
         props.viewer.entities.remove(startMarker);
       } else if (type === 'end' && endMarker && props.viewer.entities.contains(endMarker)) {
@@ -433,6 +433,49 @@ export default defineComponent({
       });
     };
     
+    // 新增函数：只清除路线路径，不清除标记点
+    const clearRoutePath = () => {
+      if (props.viewer) {
+        try {
+          // 只删除路线实体，保留标记点
+          if (routeEntity) {
+            const routeId = routeEntity.id;
+            if (props.viewer.entities.getById(routeId)) {
+              props.viewer.entities.removeById(routeId);
+            }
+            routeEntity = null;
+          }
+          
+          // 删除任何可能的路线相关实体（但不包括标记点）
+          const entitiesToRemove = [];
+          props.viewer.entities.values.forEach(entity => {
+            if (entity.polyline && entity._name === 'route') {
+              entitiesToRemove.push(entity);
+            }
+          });
+          
+          entitiesToRemove.forEach(entity => {
+            try {
+              props.viewer.entities.remove(entity);
+            } catch (error) {
+              console.error('移除实体失败:', error);
+            }
+          });
+          
+          props.viewer.scene.requestRender();
+        } catch (error) {
+          console.error('清除路线路径时发生错误:', error);
+        }
+      }
+      
+      // 重置路线信息
+      routeInfo.value = {
+        distance: null,
+        duration: null,
+        tolls: null
+      };
+    };
+
     // 清除路线
     const clearRoute = () => {
       if (props.viewer) {
