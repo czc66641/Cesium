@@ -158,13 +158,13 @@ export default defineComponent({
 
     // 3D Tiles 资产列表
     const tilesetAssets = ref([
-      { id: 75343, name: "Cesium OSM Buildings" },
+      { id: 75343, name: "纽约" },
       { id: 96188, name: "Natural Earth" },
-      { id: 1461964, name: "Melbourne Photogrammetry" },
-      { id: 2275207, name: "New York" },
+      { id: 57588, name: "华盛顿" },
+      { id: 2275207, name: "谷歌3d地形瓦片" },
       { id: 69380, name: "San Francisco" },
-      { id: 3872, name: "Grand Canyon" },
-      { id: 40866, name: "Seattle Buildings" },
+      { id: 1415196, name: "旧金山" },
+      { id: 2521176, name: "OSM建筑" },
       { id: 16421, name: "Historical St. Peter's Basilica" },
     ]);
     const selectedTilesetAsset = ref(tilesetAssets.value[0]);

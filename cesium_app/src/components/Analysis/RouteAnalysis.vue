@@ -1,87 +1,66 @@
 <template>
-  <div class="analysis-panel" @mousedown="startDrag" @mousemove="onDrag" @mouseup="endDrag" @mouseleave="endDrag">
-    <div class="panel-header">
-      <span class="panel-title">空间分析工具</span>
-      <div class="tabs">
-        <button :class="{ active: activeTab === 'route' }" @click="activeTab = 'route'">路径规划</button>
-        <button :class="{ active: activeTab === 'visibility' }" @click="activeTab = 'visibility'">视域分析</button>
-      </div>
-    </div>
-
-    <div v-if="activeTab === 'route'" class="tab-content">
-      <div class="analysis-section">
-        <div class="section-title">路径规划</div>
-        
-        <!-- 起点设置 -->
-        <div class="input-group">
-          <label>起点:</label>
-          <div class="location-input">
-            <input type="text" placeholder="经度" v-model="startPoint.lng">
-            <input type="text" placeholder="纬度" v-model="startPoint.lat">
-            <button @click="useCurrentLocation('start')" class="small-btn">当前位置</button>
-            <button @click="useMapClick('start')" :class="['small-btn', pickingMode === 'start' ? 'active' : '']">地图选点</button>
-          </div>
-        </div>
-        
-        <!-- 终点设置 -->
-        <div class="input-group">
-          <label>终点:</label>
-          <div class="location-input">
-            <input type="text" placeholder="经度" v-model="endPoint.lng">
-            <input type="text" placeholder="纬度" v-model="endPoint.lat">
-            <button @click="useCurrentLocation('end')" class="small-btn">当前位置</button>
-            <button @click="useMapClick('end')" :class="['small-btn', pickingMode === 'end' ? 'active' : '']">地图选点</button>
-          </div>
-        </div>
-
-        <!-- 交通方式选择 -->
-        <div class="input-group">
-          <label>交通方式:</label>
-          <select v-model="routeType">
-            <option value="driving">驾车</option>
-            <option value="walking">步行</option>
-            <option value="bicycling">骑行</option>
-          </select>
-        </div>
-
-        <!-- 路线策略选择 -->
-        <div class="input-group" v-if="routeType === 'driving'">
-          <label>路线策略:</label>
-          <select v-model="strategy">
-            <option value="0">速度优先</option>
-            <option value="1">费用优先</option>
-            <option value="2">距离优先</option>
-            <option value="3">避开高速</option>
-            <option value="4">避开拥堵</option>
-            <option value="5">多策略</option>
-          </select>
-        </div>
-
-        <!-- 路线操作按钮 -->
-        <div class="control-buttons">
-          <button @click="calculateRoute" class="btn-primary">计算路线</button>
-          <button @click="clearRoute" class="btn-secondary">清除路线</button>
-        </div>
-        
-        <!-- 路线信息展示 -->
-        <div class="route-info" v-if="routeInfo.distance !== null && routeInfo.distance !== undefined">
-          <p><strong>总距离:</strong> {{ (routeInfo.distance / 1000).toFixed(2) }} 公里</p>
-          <p><strong>预计时间:</strong> {{ formatDuration(routeInfo.duration) }}</p>
-          <p><strong>收费:</strong> {{ routeInfo.tolls ? routeInfo.tolls + '元' : '无' }}</p>
-        </div>
-
-        <div class="status-message" v-if="statusMessage">{{ statusMessage }}</div>
-      </div>
-    </div>
-
-    <div v-if="activeTab === 'visibility'" class="tab-content">
-      <div class="analysis-section">
-        <div class="section-title">视域分析</div>
-        <p>视域分析功能开发中...</p>
+  <div class="analysis-section">
+    <div class="section-title">路径规划</div>
+    
+    <!-- 起点设置 -->
+    <div class="input-group">
+      <label>起点:</label>
+      <div class="location-input">
+        <input type="text" placeholder="经度" v-model="startPoint.lng">
+        <input type="text" placeholder="纬度" v-model="startPoint.lat">
+        <button @click="useCurrentLocation('start')" class="small-btn">当前位置</button>
+        <button @click="useMapClick('start')" :class="['small-btn', pickingMode === 'start' ? 'active' : '']">地图选点</button>
       </div>
     </div>
     
-    <div class="drag-handle"></div>
+    <!-- 终点设置 -->
+    <div class="input-group">
+      <label>终点:</label>
+      <div class="location-input">
+        <input type="text" placeholder="经度" v-model="endPoint.lng">
+        <input type="text" placeholder="纬度" v-model="endPoint.lat">
+        <button @click="useCurrentLocation('end')" class="small-btn">当前位置</button>
+        <button @click="useMapClick('end')" :class="['small-btn', pickingMode === 'end' ? 'active' : '']">地图选点</button>
+      </div>
+    </div>
+
+    <!-- 交通方式选择 -->
+    <div class="input-group">
+      <label>交通方式:</label>
+      <select v-model="routeType">
+        <option value="driving">驾车</option>
+        <option value="walking">步行</option>
+        <option value="bicycling">骑行</option>
+      </select>
+    </div>
+
+    <!-- 路线策略选择 -->
+    <div class="input-group" v-if="routeType === 'driving'">
+      <label>路线策略:</label>
+      <select v-model="strategy">
+        <option value="0">速度优先</option>
+        <option value="1">费用优先</option>
+        <option value="2">距离优先</option>
+        <option value="3">避开高速</option>
+        <option value="4">避开拥堵</option>
+        <option value="5">多策略</option>
+      </select>
+    </div>
+
+    <!-- 路线操作按钮 -->
+    <div class="control-buttons">
+      <button @click="calculateRoute" class="btn-primary">计算路线</button>
+      <button @click="clearRoute" class="btn-secondary">清除路线</button>
+    </div>
+    
+    <!-- 路线信息展示 -->
+    <div class="route-info" v-if="routeInfo.distance !== null && routeInfo.distance !== undefined">
+      <p><strong>总距离:</strong> {{ (routeInfo.distance / 1000).toFixed(2) }} 公里</p>
+      <p><strong>预计时间:</strong> {{ formatDuration(routeInfo.duration) }}</p>
+      <p><strong>收费:</strong> {{ routeInfo.tolls ? routeInfo.tolls + '元' : '无' }}</p>
+    </div>
+
+    <div class="status-message" v-if="statusMessage">{{ statusMessage }}</div>
   </div>
 </template>
 
@@ -90,7 +69,7 @@ import { defineComponent, ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import * as Cesium from 'cesium';
 
 export default defineComponent({
-  name: 'Analysis',
+  name: 'RouteAnalysis',
   props: {
     viewer: {
       type: Object,
@@ -101,11 +80,7 @@ export default defineComponent({
       required: true,
     },
   },
-  emits: ['update-location'],
-  setup(props, { emit }) {
-    // 标签页
-    const activeTab = ref('route');
-
+  setup(props) {
     // 路径规划
     const startPoint = ref({ lng: '', lat: '' });
     const endPoint = ref({ lng: '', lat: '' });
@@ -560,36 +535,6 @@ export default defineComponent({
       return result;
     };
 
-    // 拖动功能
-    const isDragging = ref(false);
-    const dragOffset = ref({ x: 0, y: 0 });
-
-    const startDrag = (event) => {
-      // 只在面板头部拖动
-      if (!event.target.closest('.panel-header, .drag-handle')) return;
-      
-      isDragging.value = true;
-      dragOffset.value = {
-        x: event.clientX - event.currentTarget.getBoundingClientRect().left,
-        y: event.clientY - event.currentTarget.getBoundingClientRect().top,
-      };
-      
-      // 防止文本选择
-      event.preventDefault();
-    };
-
-    const onDrag = (event) => {
-      if (isDragging.value) {
-        const panel = document.querySelector('.analysis-panel');
-        panel.style.left = `${event.clientX - dragOffset.value.x}px`;
-        panel.style.top = `${event.clientY - dragOffset.value.y}px`;
-      }
-    };
-
-    const endDrag = () => {
-      isDragging.value = false;
-    };
-
     onMounted(() => {
       if (props.viewer) {
         initPickHandler();
@@ -657,7 +602,6 @@ export default defineComponent({
     });
 
     return {
-      activeTab,
       startPoint,
       endPoint,
       routeType,
@@ -669,81 +613,13 @@ export default defineComponent({
       useCurrentLocation,
       calculateRoute,
       clearRoute,
-      formatDuration,
-      startDrag,
-      onDrag,
-      endDrag
+      formatDuration
     };
   }
 });
 </script>
 
 <style scoped>
-.analysis-panel {
-  position: absolute;
-  bottom: 100px;
-  right: 10px;
-  z-index: 1000;
-  background-color: rgba(248, 249, 250, 0.95);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  width: 350px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s ease;
-  cursor: default;
-}
-
-.analysis-panel:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.panel-header {
-  background-color: #f0f0f0;
-  border-bottom: 1px solid #ddd;
-  padding: 8px;
-  cursor: move;
-  user-select: none;
-}
-
-.panel-title {
-  font-weight: bold;
-  font-size: 14px;
-  display: block;
-  text-align: center;
-  margin-bottom: 6px;
-  color: #333;
-}
-
-.tabs {
-  display: flex;
-  justify-content: space-around;
-}
-
-.tabs button {
-  flex: 1;
-  padding: 6px 4px;
-  background-color: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s ease;
-}
-
-.tabs button.active {
-  background-color: #4285f4;
-  color: white;
-  font-weight: bold;
-  border-color: #3367d6;
-}
-
-.tab-content {
-  padding: 10px;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
 .analysis-section {
   margin-bottom: 10px;
 }
@@ -859,16 +735,5 @@ button:hover {
   color: #666;
   text-align: center;
   font-style: italic;
-}
-
-.drag-handle {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 16px;
-  height: 16px;
-  cursor: nwse-resize;
-  background: linear-gradient(135deg, transparent 50%, #ccc 50%, #ccc 100%);
-  border-bottom-right-radius: 8px;
 }
 </style>

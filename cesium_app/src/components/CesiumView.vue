@@ -7,8 +7,9 @@
       <option value="googleEarth">谷歌地球影像</option>
       <option value="tiandituImg">天地图影像</option>
       <option value="tiandituVec">天地图矢量</option>
-      <option value="arcgis">ARCGIS 影像</option>
       <option value="arcgisTerrain">ARCGIS 地形图</option>
+      <option value="cesiumTerrain1">Cesium地形图1</option>
+      <option value="cesiumTerrain2">Cesium地形图2</option>
       <option value="bingAerial">必应卫星影像</option>
       <option value="bingRoad">必应道路</option>
       <option value="gaodeMap">高德地图</option>
@@ -62,7 +63,7 @@ import 'cesium/Build/Cesium/Widgets/widgets.css';
 import ViewTranference from './ViewTranference.vue';
 import FileMap from './FileMap.vue';
 import MouseEvent from './MouseEvent.vue';
-import Analysis from './Analysis.vue';
+import Analysis from './Analysis/index.vue';  // 更新引用路径
 
 export default defineComponent({
   name: 'CesiumView',
@@ -91,6 +92,13 @@ export default defineComponent({
       if (!viewer.value) return;
 
       viewer.value.imageryLayers.removeAll();
+      
+      // 默认恢复为平坦地形
+      viewer.value.scene.setTerrain(
+        new Cesium.Terrain(
+          new Cesium.EllipsoidTerrainProvider()
+        )
+      );
 
       const gaodeKey = 'b38b391e7fbaa0cbaf84566f941985ca'; // 高德 API 密钥
 
@@ -156,34 +164,64 @@ export default defineComponent({
             );
             break;
 
-          case 'arcgis':
-            viewer.value.imageryLayers.addImageryProvider(
-              new Cesium.ArcGisMapServerImageryProvider({
-                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer',
-              })
-            );
-            break;
-
           case 'arcgisTerrain':
+            // 添加ARCGIS地图服务作为图层
             viewer.value.imageryLayers.addImageryProvider(
               new Cesium.ArcGisMapServerImageryProvider({
                 url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer',
               })
             );
+            
+            // 设置Cesium全球地形
+            viewer.value.scene.setTerrain(
+              new Cesium.Terrain(
+                await Cesium.CesiumTerrainProvider.fromIonAssetId(3956),
+              ),
+            );
+            break;
+
+          case 'cesiumTerrain1':
+            // 添加谷歌地图作为底图
+            viewer.value.imageryLayers.addImageryProvider(
+              new Cesium.UrlTemplateImageryProvider({
+                url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                minimumLevel: 0,
+                maximumLevel: 19,
+              })
+            );
+            // 设置Cesium全球地形1
+            viewer.value.scene.setTerrain(
+              new Cesium.Terrain(
+                await Cesium.CesiumTerrainProvider.fromIonAssetId(3956),
+              ),
+            );
+            break;
+            
+          case 'cesiumTerrain2':
+            // 添加OpenStreetMap作为底图
+            viewer.value.imageryLayers.addImageryProvider(
+              new Cesium.OpenStreetMapImageryProvider({
+                url: 'https://a.tile.openstreetmap.org/',
+              })
+            );
+            
+            // 设置Cesium全球地形2
+            viewer.value.scene.setTerrain(
+              new Cesium.Terrain(
+                await Cesium.CesiumTerrainProvider.fromIonAssetId(3956),
+              ),
+            );
             break;
 
           case 'bingAerial':
-            const bingAerialLayer = viewer.value.imageryLayers.addImageryProvider(
-              await Cesium.IonImageryProvider.fromAssetId(4) // 必应卫星影像
+            viewer.value.imageryLayers.addImageryProvider(
+              await Cesium.IonImageryProvider.fromAssetId(3)
             );
-            await viewer.value.zoomTo(bingAerialLayer);
             break;
 
           case 'bingRoad':
             viewer.value.imageryLayers.addImageryProvider(
-              new Cesium.BingMapsImageryProvider({
-                mapStyle: Cesium.BingMapsStyle.ROAD,
-              })
+              await Cesium.IonImageryProvider.fromAssetId(4)
             );
             break;
 
@@ -271,9 +309,9 @@ export default defineComponent({
     };
 
     onMounted(async () => {
-      // 使用官方示例提供的 Cesium Ion 密钥
+      // 更新 Cesium Ion 密钥
       Cesium.Ion.defaultAccessToken =
-        'eyJqdGkiOiJmMzQ5NjA3Ny1iYzdkLTRhYWQtODhjOS0xMDM5ZDU2MDc5NWYiLCJpZCI6MjkzOTI4LCJpYXQiOjE3NDQ2Mjc0MzJ9.5B7kUdXIlR3RrzCEs58kNEFzEgihL6ezYuCjsU6WvXw';
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4Njg5NmJkZS03ZjgwLTRhNWYtYWU5OC01NDRmZTYxNmQ3YmIiLCJpZCI6MjkzOTI4LCJpYXQiOjE3NDQ2MjcyMDB9.pQM7IkMb643M1hF5XHklTSAYMhjmHQDHlei0X8hsokk';
 
       viewer.value = new Cesium.Viewer('cesiumContainer', {
         imageryProvider: false,
