@@ -15,11 +15,11 @@
         :viewer="viewer"
         :current-location="currentLocation"
       />
-
+      
       <!-- 视域分析组件 -->
-      <VisibilityAnalysis 
+      <VisibilityAnalysis
         v-if="activeTab === 'visibility'"
-        :viewer="viewer" 
+        :viewer="viewer"
         :current-location="currentLocation"
       />
     </div>
@@ -51,9 +51,9 @@ export default defineComponent({
   },
   emits: ['update-location'],
   setup() {
-    // 标签页
+    // 当前激活的标签页
     const activeTab = ref('route');
-
+    
     // 拖动功能
     const isDragging = ref(false);
     const dragOffset = ref({ x: 0, y: 0 });
@@ -125,15 +125,16 @@ export default defineComponent({
 .panel-title {
   font-weight: bold;
   font-size: 14px;
+  color: #333;
   display: block;
   text-align: center;
-  margin-bottom: 6px;
-  color: #333;
+  margin-bottom: 8px;
 }
 
 .tabs {
   display: flex;
   justify-content: space-around;
+  margin-top: 5px;
 }
 
 .tabs button {
@@ -144,6 +145,7 @@ export default defineComponent({
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
+  margin: 0 4px;
   transition: all 0.2s ease;
 }
 

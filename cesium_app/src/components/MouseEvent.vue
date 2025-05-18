@@ -77,7 +77,7 @@
           }
         }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
   
-        // 鼠标左键点击事件
+        // 鼠标左键点击事件 - 只更新点击位置信息，不再飞行到点击位置
         handler.setInputAction((click) => {
           const cartesian = props.viewer.camera.pickEllipsoid(
             click.position,
@@ -90,14 +90,14 @@
             clickPosition.lon = Cesium.Math.toDegrees(cartographic.longitude);
             clickPosition.height = cartographic.height;
             clickPosition.cartesian = cartesian;
-  
-            // 通知父组件点击位置（可选）
-            emit('update-location', {
-              ...props.currentLocation,
-              longitude: clickPosition.lon,
-              latitude: clickPosition.lat,
-              height: 1000, // 调整到点击位置的近视角
-            });
+            
+            // 移除自动飞行功能，只更新位置信息，不触发飞行
+            // emit('update-location', {
+            //   ...props.currentLocation,
+            //   longitude: clickPosition.lon,
+            //   latitude: clickPosition.lat,
+            //   height: 1000, // 调整到点击位置的近视角
+            // });
           }
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
       };

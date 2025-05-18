@@ -309,29 +309,44 @@ export default defineComponent({
     };
 
     onMounted(async () => {
-      // 更新 Cesium Ion 密钥
-      Cesium.Ion.defaultAccessToken =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4Njg5NmJkZS03ZjgwLTRhNWYtYWU5OC01NDRmZTYxNmQ3YmIiLCJpZCI6MjkzOTI4LCJpYXQiOjE3NDQ2MjcyMDB9.pQM7IkMb643M1hF5XHklTSAYMhjmHQDHlei0X8hsokk';
+      try {
+        // 更新 Cesium Ion 密钥
+        Cesium.Ion.defaultAccessToken =
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4Njg5NmJkZS03ZjgwLTRhNWYtYWU5OC01NDRmZTYxNmQ3YmIiLCJpZCI6MjkzOTI4LCJpYXQiOjE3NDQ2MjcyMDB9.pQM7IkMb643M1hF5XHklTSAYMhjmHQDHlei0X8hsokk';
+        
+        // 创建不依赖任何在线资源的基础地球
+        viewer.value = new Cesium.Viewer('cesiumContainer', {
+          imageryProvider: new Cesium.TileMapServiceImageryProvider({
+            url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII')
+          }),
+          terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+          baseLayerPicker: false,
+          geocoder: false,
+          homeButton: false,
+          sceneModePicker: false,
+          navigationHelpButton: false,
+          animation: false,
+          timeline: false,
+          fullscreenButton: false,
+          infoBox: false,
+          selectionIndicator: false,
+        });
 
-      viewer.value = new Cesium.Viewer('cesiumContainer', {
-        imageryProvider: false,
-        terrainProvider: new Cesium.EllipsoidTerrainProvider(),
-        baseLayerPicker: false,
-        geocoder: false,
-        homeButton: false,
-        sceneModePicker: false,
-        navigationHelpButton: false,
-        animation: false,
-        timeline: false,
-        fullscreenButton: false,
-        infoBox: false,
-        selectionIndicator: false,
-      });
+        viewer.value._cesiumWidget._creditContainer.style.display = 'none';
 
-      viewer.value._cesiumWidget._creditContainer.style.display = 'none';
-
-      await changeMap();
-      resetView();
+        try {
+          await changeMap();
+        } catch (error) {
+          console.error('切换地图失败，使用默认地图:', error);
+        }
+        
+        resetView();
+        
+        console.log('Cesium 地球创建成功');
+      } catch (error) {
+        console.error('Cesium 地球创建失败:', error);
+        alert('地球加载失败，请检查网络连接或刷新页面重试');
+      }
     });
 
     onBeforeUnmount(() => {

@@ -1,22 +1,23 @@
 <template>
-  <div class="app">
-    <CesiumView />
-  </div>
+  <CesiumView />
 </template>
 
 <script>
-import CesiumView from './components/CesiumView.vue'
+import { defineComponent } from 'vue';
+import CesiumView from './components/CesiumView.vue';
 
-export default {
+export default defineComponent({
   name: 'App',
   components: {
-    CesiumView
-  }
-}
+    CesiumView,
+  },
+});
 </script>
 
 <style>
-body {
+html, body {
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
