@@ -128,7 +128,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, watch } from 'vue';
+import { defineComponent, ref, watch, inject } from 'vue';
 import * as Cesium from 'cesium';
 
 export default defineComponent({
@@ -143,7 +143,7 @@ export default defineComponent({
       required: true,
     },
   },
-  emits: ['update-location'],
+  emits: ['update-location', 'add-layer'],
   setup(props, { emit }) {
     const gltfColor = ref('#ffffff');
     const tilesColor = ref('#ffffff');
@@ -208,37 +208,51 @@ export default defineComponent({
       return true;
     };
 
-    // 清理无效实体和数据源
-    const cleanEntities = () => {
-      if (props.viewer) {
+    // 清理无效实体和数据源 - 修改为只清理指定类型
+    const cleanEntities = (type = null) => {
+      if (!props.viewer) return;
+      
+      if (type === null || type === 'all') {
+        // 清除所有实体
         props.viewer.entities.removeAll();
-        console.log('Cleared all entities');
+        console.log('已清除所有实体');
+        
+        // 清除所有数据源
         const dataSources = props.viewer.dataSources;
         for (let i = dataSources.length - 1; i >= 0; i--) {
           const ds = dataSources.get(i);
           dataSources.remove(ds);
-          console.log('Removed dataSource:', ds.name || 'unnamed');
+          console.log('已移除数据源:', ds.name || 'unnamed');
         }
+      } else if (type === 'gltf') {
+        // 仅清除之前的GLTF模型
+        clearGltf();
+      } else if (type === '3dtiles') {
+        // 仅清除之前的3DTiles
+        clear3DTiles();
+      } else if (type === 'geojson') {
+        // 仅清除之前的GeoJSON
+        clearGeoJson();
       }
     };
 
-    // 加载 glTF 模型（Entity 方法）
+    // 加载 glTF 模型（Entity 方法）- 修改为不清除其他实体
     const loadGltf = async (event) => {
       if (!props.viewer) {
-        console.error('Viewer is not initialized');
+        console.error('Viewer未初始化');
         return;
       }
 
       const file = event.target.files[0];
       if (!file || !file.name.match(/\.glb$/i)) {
-        console.error('请选择 .glb 文件');
+        console.error('请选择.glb文件');
         return;
       }
       
       gltfFileName.value = file.name;
 
       if (!validateLocation()) {
-        console.error('无法加载 glTF：位置无效');
+        console.error('无法加载glTF：位置无效');
         return;
       }
 
@@ -249,7 +263,7 @@ export default defineComponent({
           const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
           const url = URL.createObjectURL(blob);
 
-          cleanEntities();
+          // 只清除先前的glTF，保留其他实体
           clearGltf();
 
           const position = Cesium.Cartesian3.fromDegrees(
@@ -263,8 +277,10 @@ export default defineComponent({
           const hpr = new Cesium.HeadingPitchRoll(heading, pitch, roll);
           const orientation = Cesium.Transforms.headingPitchRollQuaternion(position, hpr);
 
+          const entityId = `gltf_${Cesium.createGuid()}`;
+          
           gltfEntity = await props.viewer.entities.add({
-            id: `gltf_${Cesium.createGuid()}`,
+            id: entityId,
             name: file.name,
             position: position,
             orientation: orientation,
@@ -280,6 +296,15 @@ export default defineComponent({
               shadows: Cesium.ShadowMode.ENABLED,
               heightReference: Cesium.HeightReference.NONE,
             },
+          });
+
+          // 添加到图层管理器
+          emit('add-layer', {
+            id: entityId,
+            name: file.name,
+            type: 'GLTF',
+            entity: gltfEntity,
+            visible: true
           });
 
           console.log('glTF 加载成功:', file.name, '位置:', position);
@@ -334,20 +359,20 @@ export default defineComponent({
       }
     };
 
-    // 加载 3D Tiles（从选择的资产）- 修复视点计算问题
+    // 加载 3D Tiles（从选择的资产）- 修改为不清除其他实体
     const load3DTiles = async () => {
       if (!props.viewer) {
-        console.error('Viewer is not initialized');
+        console.error('Viewer未初始化');
         return;
       }
 
       try {
-        cleanEntities();
+        // 只清除现有的3DTiles，保留其他实体
         clear3DTiles();
 
         // 使用选择的 Cesium Ion 资产ID加载 3D Tiles
         const assetId = selectedTilesetAsset.value.id;
-        console.log(`加载 3D Tiles 资产: ${selectedTilesetAsset.value.name} (ID: ${assetId})`);
+        console.log(`加载3D Tiles资产: ${selectedTilesetAsset.value.name} (ID: ${assetId})`);
         
         try {
           tileset = await Cesium.Cesium3DTileset.fromIonAssetId(assetId, {
@@ -365,6 +390,16 @@ export default defineComponent({
           
           // 确保在tileset加载后才尝试操作
           await tileset.readyPromise;
+
+          // 添加到图层管理器
+          const tilesetId = `3dtiles_${selectedTilesetAsset.value.id}_${Date.now()}`;
+          emit('add-layer', {
+            id: tilesetId,
+            name: selectedTilesetAsset.value.name,
+            type: '3DTILES',
+            tileset: tileset,
+            visible: true
+          });
           
           // 获取3D Tiles的包围球，计算合适的视点
           setTimeout(() => {
@@ -475,10 +510,10 @@ export default defineComponent({
       }
     };
 
-    // 修复 GeoJSON 加载逻辑
+    // 修复 GeoJSON 加载逻辑 - 修改为不清除其他实体
     const loadGeoJson = async (event) => {
       if (!props.viewer) {
-        console.error('Viewer is not initialized');
+        console.error('Viewer未初始化');
         return;
       }
 
@@ -500,7 +535,7 @@ export default defineComponent({
             return;
           }
 
-          cleanEntities();
+          // 只清除先前的GeoJSON，保留其他实体
           clearGeoJson();
 
           try {
@@ -518,6 +553,20 @@ export default defineComponent({
 
             // 提取字段供用户选择 - 使用 .value
             extractGeoJsonFields(geoJsonDataSource.value);
+
+            // 生成唯一ID并设置到dataSource
+            const geoJsonId = `geojson_${Date.now()}`;
+            geoJsonDataSource.value.id = geoJsonId;
+            geoJsonDataSource.value.name = file.name;
+
+            // 添加到图层管理器
+            emit('add-layer', {
+              id: geoJsonId,
+              name: file.name,
+              type: 'GEOJSON',
+              dataSource: geoJsonDataSource.value,
+              visible: true
+            });
 
             try {
               // 飞行到 GeoJSON 数据范围

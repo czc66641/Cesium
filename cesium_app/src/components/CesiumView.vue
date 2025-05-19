@@ -37,6 +37,15 @@
     :viewer="viewer"
     :current-location="currentLocation"
     @update-location="updateLocation"
+    @add-layer="addLayerToManager"
+  />
+  
+  <!-- 引入图层管理组件 -->
+  <LayerManager
+    v-if="viewer"
+    ref="layerManagerRef"
+    :viewer="viewer"
+    @remove-layer="handleLayerRemoved"
   />
 
   <!-- 引入空间分析组件 -->
@@ -57,13 +66,14 @@
 </template>
 
 <script>
-import { defineComponent, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { defineComponent, onMounted, onBeforeUnmount, ref, watch, provide } from 'vue';
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import ViewTranference from './ViewTranference.vue';
 import FileMap from './FileMap.vue';
 import MouseEvent from './MouseEvent.vue';
-import Analysis from './Analysis/index.vue';  // 更新引用路径
+import Analysis from './Analysis/index.vue';
+import LayerManager from './LayerManager.vue';  // 导入图层管理组件
 
 export default defineComponent({
   name: 'CesiumView',
@@ -72,10 +82,12 @@ export default defineComponent({
     FileMap,
     MouseEvent,
     Analysis,
+    LayerManager  // 添加图层管理组件
   },
   setup() {
     const viewer = ref(null);
     const currentMap = ref('googleEarth');
+    const layerManagerRef = ref(null);  // 图层管理器引用
 
     // 保存当前相机位置状态
     const currentLocation = ref({
@@ -86,6 +98,53 @@ export default defineComponent({
       pitch: -90,
       roll: 0,
     });
+
+    // 提供图层管理器给子组件
+    provide('layerManager', layerManagerRef);
+    
+    // 添加图层到图层管理器
+    const addLayerToManager = (layer) => {
+      if (layerManagerRef.value) {
+        layerManagerRef.value.addLayer(layer);
+      }
+    };
+    
+    // 处理图层管理器中移除图层事件
+    const handleLayerRemoved = (layer) => {
+      if (!viewer.value) return;
+      
+      console.log(`处理图层移除: ${layer.name} (${layer.type})`);
+      
+      try {
+        // 根据图层类型执行不同的移除操作
+        if (layer.type === 'GLTF' && layer.entity) {
+          if (viewer.value.entities.contains(layer.entity)) {
+            viewer.value.entities.remove(layer.entity);
+            console.log('已移除GLTF实体');
+          } else {
+            console.warn('找不到要移除的GLTF实体');
+          }
+        } 
+        else if (layer.type === '3DTILES' && layer.tileset) {
+          if (viewer.value.scene.primitives.contains(layer.tileset)) {
+            viewer.value.scene.primitives.remove(layer.tileset);
+            console.log('已移除3D Tiles图层');
+          } else {
+            console.warn('找不到要移除的3D Tiles图层');
+          }
+        }
+        else if (layer.type === 'GEOJSON' && layer.dataSource) {
+          if (viewer.value.dataSources.contains(layer.dataSource)) {
+            viewer.value.dataSources.remove(layer.dataSource);
+            console.log('已移除GeoJSON数据源');
+          } else {
+            console.warn('找不到要移除的GeoJSON数据源');
+          }
+        }
+      } catch (error) {
+        console.error(`移除图层 ${layer.name} 时出错:`, error);
+      }
+    };
 
     // 切换地图的方法
     const changeMap = async () => {
@@ -365,10 +424,13 @@ export default defineComponent({
       viewer,
       currentMap,
       currentLocation,
+      layerManagerRef,
       changeMap,
       resetView,
       flyToLocation,
       updateLocation,
+      addLayerToManager,
+      handleLayerRemoved,
       Cesium,
     };
   },
