@@ -121,14 +121,17 @@
   <style scoped>
   .view-control-panel {
     position: absolute;
-    top: 55px;
-    right: 10px;
+    top: 60px; /* 调整位置，放在导航栏下方 */
+    left: 340px; /* 不覆盖文件导入面板 */
     z-index: 1000;
-    background-color: rgba(255, 255, 255, 0.8);
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    width: 230px;
+    background-color: rgba(248, 249, 250, 0.95);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 300px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+    cursor: default;
   }
   
   .view-control-title {

@@ -875,7 +875,7 @@ export default defineComponent({
 <style scoped>
 .file-map-panel {
   position: absolute;
-  top: 10px;
+  top: 60px; /* 调整位置，放在导航栏下方 */
   left: 10px;
   z-index: 1000;
   background-color: rgba(248, 249, 250, 0.95);

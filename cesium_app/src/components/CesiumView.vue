@@ -1,67 +1,59 @@
 <!-- CesiumView.vue -->
 <template>
   <div id="cesiumContainer" class="cesium-container"></div>
-  <div class="map-selector">
-    <label for="map-select">切换地图:</label>
-    <select id="map-select" v-model="currentMap" @change="changeMap">
-      <option value="googleEarth">谷歌地球影像</option>
-      <option value="tiandituImg">天地图影像</option>
-      <option value="tiandituVec">天地图矢量</option>
-      <option value="arcgisTerrain">ARCGIS 地形图</option>
-      <option value="cesiumTerrain1">Cesium地形图1</option>
-      <option value="cesiumTerrain2">Cesium地形图2</option>
-      <option value="bingAerial">必应卫星影像</option>
-      <option value="bingRoad">必应道路</option>
-      <option value="gaodeMap">高德地图</option>
-      <option value="gaodeSatellite">高德卫星影像</option>
-      <option value="osm">OpenStreetMap</option>
-    </select>
-  </div>
+  
+  <!-- 顶部导航栏 -->
+  <NavBar
+    :active-panels="activePanels"
+    v-model:selectedMap="currentMap"
+    @toggle-panel="togglePanel"
+    @reset-view="resetView"
+  />
 
-  <!-- 回到初始状态的按钮 -->
-  <div class="reset-view-button">
-    <button @click="resetView">回到初始状态</button>
-  </div>
-
-  <!-- 引入视角控制组件 -->
+  <!-- 视角控制面板 - 可切换显示 -->
   <ViewTranference
-    v-if="viewer"
+    v-if="viewer && isPanelActive('viewControl')"
     :viewer="viewer"
     :current-location="currentLocation"
     @update-location="updateLocation"
+    class="toggleable-panel"
   />
 
-  <!-- 引入数据加载组件 -->
+  <!-- 数据加载面板 - 可切换显示 -->
   <FileMap
-    v-if="viewer"
+    v-if="viewer && isPanelActive('dataLoad')"
     :viewer="viewer"
     :current-location="currentLocation"
     @update-location="updateLocation"
     @add-layer="addLayerToManager"
+    class="toggleable-panel"
   />
   
-  <!-- 引入图层管理组件 -->
+  <!-- 图层管理组件 - 始终显示 -->
   <LayerManager
     v-if="viewer"
     ref="layerManagerRef"
     :viewer="viewer"
     @remove-layer="handleLayerRemoved"
+    class="fixed-panel"
   />
 
-  <!-- 引入空间分析组件 -->
+  <!-- 空间分析组件 - 可切换显示 -->
   <Analysis
-    v-if="viewer"
+    v-if="viewer && isPanelActive('analysis')"
     :viewer="viewer"
     :current-location="currentLocation"
     @update-location="updateLocation"
+    class="toggleable-panel"
   />
 
-  <!-- 引入鼠标事件组件 -->
+  <!-- 鼠标事件组件 - 始终显示 -->
   <MouseEvent
     v-if="viewer"
     :viewer="viewer"
     :current-location="currentLocation"
     @update-location="updateLocation"
+    class="fixed-panel"
   />
 </template>
 
@@ -73,7 +65,8 @@ import ViewTranference from './ViewTranference.vue';
 import FileMap from './FileMap.vue';
 import MouseEvent from './MouseEvent.vue';
 import Analysis from './Analysis/index.vue';
-import LayerManager from './LayerManager.vue';  // 导入图层管理组件
+import LayerManager from './LayerManager.vue';
+import NavBar from './NavBar.vue';
 
 export default defineComponent({
   name: 'CesiumView',
@@ -82,12 +75,31 @@ export default defineComponent({
     FileMap,
     MouseEvent,
     Analysis,
-    LayerManager  // 添加图层管理组件
+    LayerManager,
+    NavBar
   },
   setup() {
     const viewer = ref(null);
     const currentMap = ref('googleEarth');
-    const layerManagerRef = ref(null);  // 图层管理器引用
+    const layerManagerRef = ref(null);
+    
+    // 活动面板状态
+    const activePanels = ref([]);
+    
+    // 检查面板是否激活
+    const isPanelActive = (panelId) => {
+      return activePanels.value.includes(panelId);
+    };
+    
+    // 切换面板显示状态
+    const togglePanel = (panelId) => {
+      const index = activePanels.value.indexOf(panelId);
+      if (index >= 0) {
+        activePanels.value.splice(index, 1);
+      } else {
+        activePanels.value.push(panelId);
+      }
+    };
 
     // 保存当前相机位置状态
     const currentLocation = ref({
@@ -415,23 +427,20 @@ export default defineComponent({
       }
     });
 
-    // 调试：监听 viewer 是否初始化
-    watch(viewer, (newViewer) => {
-      console.log('Viewer updated:', newViewer ? 'Initialized' : 'Not initialized');
-    });
-
     return {
       viewer,
       currentMap,
       currentLocation,
       layerManagerRef,
+      activePanels,
+      isPanelActive,
+      togglePanel,
       changeMap,
       resetView,
       flyToLocation,
       updateLocation,
       addLayerToManager,
       handleLayerRemoved,
-      Cesium,
     };
   },
 });
@@ -458,56 +467,22 @@ body {
   overflow: hidden;
 }
 
-.map-selector {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 1000;
-  background-color: rgba(255, 255, 255, 0.8);
-  padding: 10px;
-  border-radius: 5px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+/* 可切换面板的样式 */
+.toggleable-panel {
+  animation: fade-in 0.3s ease;
 }
 
-.map-selector label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  font-size: 14px;
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.map-selector select {
-  padding: 6px 10px;
-  width: 180px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-  background-color: white;
-  cursor: pointer;
+/* 固定面板样式调整 */
+.fixed-panel {
+  animation: fade-in 0.3s ease;
 }
 
-.reset-view-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
-}
-
-.reset-view-button button {
-  padding: 8px 12px;
-  background-color: rgba(255, 255, 255, 0.8);
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  font-weight: bold;
-}
-
-.reset-view-button button:hover {
-  background-color: rgba(240, 240, 240, 0.95);
-}
-
+/* 移除Cesium默认控件 */
 .cesium-viewer-toolbar,
 .cesium-viewer-animationContainer,
 .cesium-viewer-timelineContainer,

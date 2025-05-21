@@ -97,8 +97,8 @@ export default defineComponent({
 <style scoped>
 .analysis-panel {
   position: absolute;
-  bottom: 100px;
-  right: 10px;
+  top: 60px; /* 调整位置，放在导航栏下方 */
+  right: 320px; /* 不覆盖图层管理器 */
   z-index: 1000;
   background-color: rgba(248, 249, 250, 0.95);
   border-radius: 8px;
